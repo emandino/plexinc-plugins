@@ -1,0 +1,85 @@
+import re
+
+HTTP_DESKTOP_UA = {
+    'Host':'www.fshare.vn',
+    'Accept-Encoding':'gzip, deflate',
+    'Referer':'https://www.fshare.vn/login.php',
+    'Connection':'keep-alive',
+    'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'User-Agent':'Mozilla/5.0 (Windows NT 6.2; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0'
+}
+
+VIDEO_DETAILS_URL = ''
+
+####################################################################################################
+
+def MetadataObjectForURL(url):
+
+    # Log.Debug("Found redirect, assuming HLS: "+url) 
+
+    #data = HTTP.Request(url, headers=HTTP_DESKTOP_UA).content 
+    #Log.Debug("Found redirect, assuming HLS: "+data) 
+    
+    #html = HTML.ElementFromURL(url, headers=HTTP_DESKTOP_UA, cacheTime=CACHE_1WEEK) 
+    
+    #Log.Debug("Found redirect, assuming HLS: "+html)
+        
+    # Attempt to extract the details of the title from the page.
+    # page = HTML.ElementFromURL(url)
+
+    # The page only currently contains the title and a brief description
+    title = 'title'
+    summary = 'summary'
+    thumb = 'thumb'
+
+    return VideoClipObject(
+        title = title,
+        summary = summary,
+        thumb = thumb
+    )
+
+####################################################################################################
+
+def MediaObjectsForURL(url):
+    return [
+      MediaObject(
+        video_codec = VideoCodec.H264,
+        audio_codec = AudioCodec.AAC,
+        container = Container.MP4,
+        optimized_for_streaming = True,
+        parts = [PartObject(key=Callback(PlayVideo, url = url))],
+        audio_channels = 2
+      )
+    ]
+
+####################################################################################################
+
+def PlayVideo(url):
+    #content = 'content'
+    #playerId = re.search('param name="playerID" value="([0-9]+)"', content).group(1)
+    #videoId = re.search('param name="@videoPlayer" value="([0-9]+)"', content).group(1)
+
+    #video_details_page = url
+    #experience = re.search('var experienceJSON = (.+)};', video_details_page).group(1) + '}'
+    #details = JSON.ObjectFromString(experience)
+
+    try:
+        req = HTTP.Request('https://www.fshare.vn/logout.php').content
+
+        headers = HTTP_DESKTOP_UA
+        req = HTTP.Request('https://www.fshare.vn/login.php', headers=headers, timeout=5, values=dict(
+          login_useremail = Prefs['fshare_user'],
+          login_password = Prefs['fshare_passwd'],
+          url_refe = "https://www.fshare.vn/index.php"
+        ))
+	
+        #x = HTTP.Request(url, headers=headers, timeout=5, follow_redirects=False).content
+        x = HTTP.Request(url, timeout=5, follow_redirects=False).content
+    except Ex.RedirectError, e:
+        if 'Location' in e.headers:
+            Log("new location : " + e.headers['Location'])
+            video_url = e.headers['Location']
+        else:
+            raise Ex.MediaNotAvailable
+
+    return Redirect(video_url)
